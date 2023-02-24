@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "main.h": "c",
+        "fio.h": "c",
+        "cli.h": "c",
+        "cos_api.h": "c",
+        "batch.h": "c",
+        "base64.h": "c"
+    }
+}

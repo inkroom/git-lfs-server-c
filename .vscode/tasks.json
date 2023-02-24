@@ -1,0 +1,68 @@
+{  
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "reset",
+            "command": "bash -c ; rm -rf ${workspaceFolder}/build ; mkdir build"
+        },
+        {
+            "dependsOn":[
+                "reset"
+            ],
+            "type": "shell",
+            "label": "CMake build debug",
+            "command": "bash",
+            "args": [
+                "-c",
+                ";",
+                "export",
+                "https_proxy=http://10.0.90.95:7890",
+                ";",
+                "cd",
+                "${workspaceFolder}/build",
+                ";",
+                "/usr/bin/cmake","-DCMAKE_BUILD_TYPE=Debug","..",
+                ";",
+                "/usr/bin/make"
+            ],
+            "options": {
+            },
+            "problemMatcher": [
+                
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "dependsOn":[
+                "reset"
+            ],
+            "type": "shell",
+            "label": "CMake build release",
+            "command": "bash",
+            "args": [
+                "-c",
+                ";",
+                "cd",
+                "${workspaceFolder}/build",
+                ";",
+                "/usr/bin/cmake",
+                "..",
+                ";",
+                "/usr/bin/make"
+            ],
+            "options": {
+            },
+            "problemMatcher": [
+                
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ],
+    "version": "2.0.0"
+}

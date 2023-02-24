@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  lfs:
+    build:
+      context: .
+    container_name: lfs
+    enviornemnts:
+      - COS_APP_ID=appid
+      - COS_BUCKET=bucket
+      - COS_KEY_ID=
+      - COS_KEY_SECRET=
+      - COS_ENDPOINT=cos.ap-chengdu.myqcloud.com
+    port:
+      - 3000:3000
