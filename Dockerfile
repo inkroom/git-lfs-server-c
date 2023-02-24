@@ -1,4 +1,6 @@
 FROM ubuntu:20.04
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && export DEBIAN_FRONTEND=noninteractive
 # libapr1-dev
 RUN sed -i "s@http://.*archive.ubuntu.com@http://mirrors.huaweicloud.com@g" /etc/apt/sources.list \
     && sed -i "s@http://.*security.ubuntu.com@http://mirrors.huaweicloud.com@g" /etc/apt/sources.list \
@@ -15,7 +17,7 @@ RUN apt install -y libssl-dev
 RUN tar -zxf curl-7.88.1.tar.gz && cd curl-7.88.1/ && ./configure --disable-ldap --disable-ldaps --with-openssl && make && make install
 
 ADD . /data
-RUN cd /data && git submodle add https://github.com/boazsegev/facil.io.git && mkdir build && cd /data/build && cmake .. && make && chmod +x lfs && cp ../lfs.sh ./ && chmod +x lfs.sh  && cp ../pack.sh ./  && mkdir lib && sh pack.sh  
+RUN cd /data && git submodule update --init --recursive && mkdir /data/build && cd /data/build && cmake .. && make && chmod +x lfs && cp ../lfs.sh ./ && chmod +x lfs.sh  && cp ../pack.sh ./  && mkdir lib && sh pack.sh  
 RUN 
 
 
