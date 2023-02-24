@@ -7,11 +7,6 @@
 #include "cos_string.h"
 #include "base64.h"
 
-typedef struct
-{
-    char *username;
-    char *password;
-} BasicAuth, *p_BasicAuth;
 
 static cos_pool_t *p = NULL;
 cos_request_options_t *init()
@@ -187,9 +182,13 @@ void _batch_request(http_s *h, FIOBJ jsonBody, lfs_item_each each)
 
     // 构建要返回的数据结构
     FIOBJ res = fiobj_hash_new2(3);
+    FIOBJ transferKey = fiobj_str_new("transfer", strlen("transfer"));
+    FIOBJ basic = fiobj_str_new("basic", strlen("basic"));
 
-    fiobj_hash_set(res, fiobj_str_new("transfer", strlen("transfer")), fiobj_str_new("basic", strlen("basic")));
-    fiobj_hash_set(res, fiobj_str_new("hash_algo", strlen("hash_algo")), fiobj_str_new("sha256", strlen("sha256")));
+    FIOBJ hash_algo_key = fiobj_str_new("hash_algo", strlen("hash_algo"));
+    FIOBJ sha256 = fiobj_str_new("sha256", strlen("sha256"));
+    fiobj_hash_set(res, transferKey, basic);
+    fiobj_hash_set(res, hash_algo_key, sha256);
 
     size_t count = fiobj_ary_count(objects);
     printf("request 3");
@@ -209,12 +208,30 @@ void _batch_request(http_s *h, FIOBJ jsonBody, lfs_item_each each)
     }
 
     fiobj_hash_set(res, objectsKey, objects);
-    fio_str_info_s res_str = fiobj_obj2cstr(fiobj_obj2json(res, 1));
+    FIOBJ f = fiobj_obj2json(res, 1);
+    fio_str_info_s res_str = fiobj_obj2cstr(f);
+    fiobj_free(f);
 
     printf("res %s\n", res_str.data);
-    int r = http_set_header(h, fiobj_str_new("Content-Type", strlen("Content-Type")), fiobj_str_new("application/vnd.git-lfs+json", strlen("application/vnd.git-lfs+json")));
+    FIOBJ contentTypeKey = fiobj_str_new("Content-Type", strlen("Content-Type"));
+    FIOBJ contentType = fiobj_str_new("application/vnd.git-lfs+json", strlen("application/vnd.git-lfs+json"));
+    int r = http_set_header(h, contentTypeKey, contentType);
     printf("set content type %d\n", r);
     http_send_body(h, res_str.data, res_str.len);
+
+    fiobj_free(objects);
+    fiobj_free(objectsKey);
+
+    fiobj_free(contentTypeKey);
+    fiobj_free(contentType);
+
+    fiobj_free(hash_algo_key);
+    fiobj_free(sha256);
+
+    fiobj_free(transferKey);
+    fiobj_free(basic);
+
+    fiobj_free(res);
 
     // fio_free(oidKey);
     // fio_free(sizeKey);
@@ -307,11 +324,11 @@ void batch_request(http_s *h)
 
     FIOBJ headers = h->headers;
 
-    FIOBJ contentTypeKey = fiobj_str_new("content-type", strlen("Content-Type"));
+    // FIOBJ contentTypeKey = fiobj_str_new("content-type", strlen("Content-Type"));
 
-    FIOBJ contentType = fiobj_hash_get(headers, contentTypeKey);
+    // FIOBJ contentType = fiobj_hash_get(headers, contentTypeKey);
 
-    fiobj_free(contentTypeKey);
+    // fiobj_free(contentTypeKey);
 
     // if (!fiobj_type_is(contentType, FIOBJ_T_STRING))
     // {
@@ -354,11 +371,16 @@ void batch_request(http_s *h)
         // 检查认证
         FIOBJ authorizationKey = fiobj_str_new("authorization", strlen("authorization"));
         FIOBJ authorization = fiobj_hash_get(h->headers, authorizationKey);
+        fiobj_free(authorizationKey);
         if (!fiobj_type_is(authorization, FIOBJ_T_STRING))
         {
-            int r = http_set_header(h, fiobj_str_new("WWW-Authenticate", strlen("WWW-Authenticate")), fiobj_str_new("Basic", strlen("Basic")));
+            FIOBJ WWW_Authenticate_Key = fiobj_str_new("WWW-Authenticate", strlen("WWW-Authenticate"));
+            FIOBJ basic = fiobj_str_new("Basic", strlen("Basic"));
+            int r = http_set_header(h, WWW_Authenticate_Key, basic);
 
             http_send_error(h, 401);
+            fiobj_free(WWW_Authenticate_Key);
+            fiobj_free(basic);
         }
         else
         {
@@ -367,9 +389,14 @@ void batch_request(http_s *h)
             printf("au =[%s]\n", s.data);
             if (lfs_str_startWith(s.data, "Basic ") != 0 || s.len <= 6)
             {
-                int r = http_set_header(h, fiobj_str_new("WWW-Authenticate", strlen("WWW-Authenticate")), fiobj_str_new("Basic", strlen("Basic")));
+                FIOBJ WWW_Authenticate_Key = fiobj_str_new("WWW-Authenticate", strlen("WWW-Authenticate"));
+                FIOBJ basic = fiobj_str_new("Basic", strlen("Basic"));
+                int r = http_set_header(h, WWW_Authenticate_Key, basic);
 
                 http_send_error(h, 401);
+                fiobj_free(WWW_Authenticate_Key);
+                fiobj_free(basic);
+                fiobj_free(authorization);
                 return;
             }
 
@@ -379,18 +406,22 @@ void batch_request(http_s *h)
                 http_send_error(h, 403);
                 return;
             }
-
-            // free(or);
-            // or = NULL;
-
             _batch_request(h, jsonBody, _batch_request_upload_for_each);
+
+            BASIC_AUTH_FREE(auth);
+
+            // free(auth->username);
+            // free(auth->password);
+            // free(auth);
+            // auth = NULL;
+            fiobj_free(authorization);
         }
     }
     else if (strcmp(op.data, "download") == 0)
     {
         _batch_request(h, jsonBody, _batch_request_download_for_each);
     }
-    // fiobj_free(operationKey);
-    // fiobj_free(operation);
-    // fiobj_free(jsonBody);
+    fiobj_free(operationKey);
+    fiobj_free(operation);
+    fiobj_free(jsonBody);
 }

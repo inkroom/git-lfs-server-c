@@ -5,6 +5,8 @@
         "cli.h": "c",
         "cos_api.h": "c",
         "batch.h": "c",
-        "base64.h": "c"
+        "base64.h": "c",
+        "cos_define.h": "c",
+        "cos_http_io.h": "c"
     }
 }

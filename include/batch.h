@@ -15,6 +15,20 @@
 
 #endif
 
+
+typedef struct
+{
+    char *username;
+    char *password;
+} BasicAuth, *p_BasicAuth;
+
+
+#define BASIC_AUTH_FREE(auth) free(auth->username);\
+    free(auth->password); \
+    free(auth); \
+    auth = NULL;
+
+
 typedef void (*lfs_item_each)(FIOBJ);
 
 void batch_request(http_s *h);
