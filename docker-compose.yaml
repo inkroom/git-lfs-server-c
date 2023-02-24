@@ -11,5 +11,7 @@ services:
       - COS_KEY_ID=
       - COS_KEY_SECRET=
       - COS_ENDPOINT=cos.ap-chengdu.myqcloud.com
+      - LFS_USERNAME=账号
+      - LFS_PASSWORD=密码
     port:
       - 3000:3000

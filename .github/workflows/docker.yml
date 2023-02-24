@@ -24,11 +24,11 @@ jobs:
        with:
          registry: ghcr.io
          username: ${{ github.repository_owner }}
-         password: ${{ secrets.ACTION_TT }}
+         password: ${{ secrets.GITHUB_TOKEN }}
 
      - name: Extract metadata (tags, labels) for Docker
        id: meta
-       uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+       uses: docker/metadata-action@v4
        with:
          images: ghcr.io/${{ github.repository_owner }}/lfs-server
          tags: |
@@ -41,4 +41,4 @@ jobs:
          push: true
          tags: ${{ steps.meta.outputs.tags }}
          labels: ${{ steps.meta.outputs.labels }}
-         github-token: ${{ secrets.ACTION_TT }}
+         github-token: ${{ secrets.GITHUB_TOKEN }}
