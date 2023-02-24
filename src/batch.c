@@ -7,7 +7,6 @@
 #include "cos_string.h"
 #include "base64.h"
 
-
 static cos_pool_t *p = NULL;
 cos_request_options_t *init()
 {
@@ -404,6 +403,8 @@ void batch_request(http_s *h)
             if (auth == NULL || strcmp(auth->username, getenv("LFS_USERNAME")) != 0 || strcmp(auth->password, getenv("LFS_PASSWORD")) != 0)
             {
                 http_send_error(h, 403);
+                BASIC_AUTH_FREE(auth);
+                fiobj_free(authorization);
                 return;
             }
             _batch_request(h, jsonBody, _batch_request_upload_for_each);
