@@ -17,7 +17,7 @@ RUN apt install -y libssl-dev
 RUN tar -zxf curl-7.88.1.tar.gz && cd curl-7.88.1/ && ./configure --disable-ldap --disable-ldaps --with-openssl && make && make install
 
 ADD . /data
-RUN cd /data && git submodule update --init --recursive && mkdir /data/build && cd /data/build && cmake .. && make && chmod +x lfs && cp ../lfs.sh ./ && chmod +x lfs.sh  && cp ../pack.sh ./  && mkdir lib && sh pack.sh  
+RUN cd /data && git submodule update --init --recursive && mkdir /data/build && cd /data/build && cmake .. && make && chmod +x lfs && cp ../entrypoint.sh ./ && chmod +x entrypoint.sh  && cp ../pack.sh ./  && mkdir lib && sh pack.sh  
 RUN 
 
 
