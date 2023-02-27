@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.14)
 
-
+option(USE_STATIC_LINK "use static compile" OFF)
+if(USE_STATIC_LINK)
+    set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc ")
+endif()
 set(PROJECT_N lfs)
 project(${PROJECT_N} VERSION 1.0)
 
@@ -8,20 +11,22 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # 最好只在debug下生成这个，或者 -DCMAKE_EXPORT_COMPILE_COMMANDS=on
 
-# if (WIN32 OR MSVC)
-#     set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
-# elseif (UNIX)
-#     # 仅查找静态库，强制后缀为 .a
-#     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 
-#     # 如果只是优先查找静态库，保证 .a 后缀在前面即可，把默认的后缀加上
-#     # set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
-# endif()
+if(USE_STATIC_LINK)
+    if (WIN32 OR MSVC)
+        set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
+    elseif (UNIX)
+        # 仅查找静态库，强制后缀为 .a
+        set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 
+    #     # 如果只是优先查找静态库，保证 .a 后缀在前面即可，把默认的后缀加上
+    #     # set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+    endif()
+endif()
 
 file(GLOB_RECURSE SRCS ${PROJECT_SOURCE_DIR}/src/*.c)
 
-# a macro that gets all of the header containing directories. 
+# a macro that gets all of the header containing directories.
 MACRO(header_directories return_list includes_base_folder extention)
     FILE(GLOB_RECURSE new_list ${includes_base_folder}/*.${extention})
     SET(dir_list "")
@@ -93,7 +98,7 @@ ENDIF()
 
 #curl-config
 FIND_PROGRAM(CURL_CONFIG_BIN NAMES curl-config)
-  
+
 IF (CURL_CONFIG_BIN)
     EXECUTE_PROCESS(
         COMMAND ${CURL_CONFIG_BIN} --libs
@@ -103,8 +108,8 @@ IF (CURL_CONFIG_BIN)
 ELSE()
     MESSAGE(FATAL_ERROR "Could not find curl-config")
 ENDIF()
-# set(CURL_LIBRARY "-lcurl") 
-# find_package(CURL REQUIRED) 
+# set(CURL_LIBRARY "-lcurl")
+# find_package(CURL REQUIRED)
 
 include_directories (${APR_INCLUDE_DIR})
 include_directories (${APR_UTIL_INCLUDE_DIR})
@@ -118,10 +123,32 @@ find_library(APR_LIBRARY apr-1 PATHS /usr/local/apr/lib/)
 find_library(APR_UTIL_LIBRARY aprutil-1 PATHS /usr/local/apr/lib/)
 find_library(MINIXML_LIBRARY mxml)
 find_library(CURL_LIBRARY curl)
-find_library(COS_LIBRARY cos_c_sdk PATHS /usr/local/lib/)
+if(USE_STATIC_LINK)
+    find_library(COS_LIBRARY libcos_c_sdk_static.a PATHS /usr/local/lib/)
+
+else()
+    find_library(COS_LIBRARY cos_c_sdk PATHS /usr/local/lib/)
+    message("not static ${COS_LIBRARY}")
+
+endif()
+
+if(USE_STATIC_LINK)
+
+    # curl需要的依赖
+    find_library(IDN_LIBRARY idn)
+    find_library(SSL_LIBRARY ssl)
+    find_library(C_LIBRARY crypto)
+    find_library(DL_LIBRARY dl)
+    message("dl ${DL_LIBRARY}")
+    message("idn ${IDN_LIBRARY}")
+    message("ssl ${SSL_LIBRARY}")
+    message("c ${C_LIBRARY}")
+
+endif()
 
 add_subdirectory(facil.io)
 message(STATUS ${SRCS})
+message(" cos ${COS_LIBRARY} ")
 add_executable(${PROJECT_N} ${SRCS})
 
 target_include_directories(${PROJECT_N} PUBLIC include )
@@ -134,3 +161,7 @@ target_link_libraries(${PROJECT_N} ${MINIXML_LIBRARY})
 
 # target_link_libraries(${PROJECT_N} curl)
 target_link_libraries(${PROJECT_N} ${CURL_LIBRARY})
+if(USE_STATIC_LINK)
+# target_link_libraries(${PROJECT_N}  idn ssl crypto dl)
+    target_link_libraries(${PROJECT_N}  ${IDN_LIBRARY} ${SSL_LIBRARY} ${C_LIBRARY} ${DL_LIBRARY})
+endif()
