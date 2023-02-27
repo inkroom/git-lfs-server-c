@@ -1,17 +1,8 @@
 #include "main.h"
 #include "stdio.h"
-#include "cos_http_io.h"
-#include "cos_api.h"
-#include "cos_log.h"
 #include "base64.h"
 int main(int argc, char const *argv[])
 {
-
-
-  if (cos_http_io_initialize(NULL, 0) != COSE_OK)
-  {
-    exit(1);
-  }
 
   printf("service started\n");
 
@@ -26,6 +17,6 @@ int main(int argc, char const *argv[])
 
   /* cleanup CLI, see "cli.c" */
   free_cli();
-  cos_http_io_deinitialize();
+  // cos_http_io_deinitialize();
   return 0;
 }

@@ -33,5 +33,7 @@ typedef void (*lfs_item_each)(FIOBJ);
 
 void batch_request(http_s *h);
 
+void _batch_request_upload_for_each(FIOBJ item);
+void _batch_request_download_for_each(FIOBJ item);
 
 #endif
