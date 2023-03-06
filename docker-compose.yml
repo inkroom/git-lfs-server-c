@@ -1,0 +1,12 @@
+services:
+        lfs:
+                build: 
+                  context: .
+                container_name: lfs
+                ports:
+                  - 8998:8998
+                environment:
+                - COS_ENDPOINT=https://image-12992.cos.ap-chengdu.myqcloud.com
+                - COS_APP_SECERT=
+                - LFS_USERNAME=
+                - LFS_PASSWORD=
