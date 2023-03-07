@@ -3,20 +3,19 @@ use std::{
     net::TcpListener,
 };
 
-use cos::CosSetting;
+use cos::CosClient;
 use json;
 pub mod base64;
 pub mod thread;
 use thread::ThreadPool;
 pub mod cos;
 fn main() {
-
     // 获取账号密码
 
     let username = std::env::var("LFS_USERNAME").expect("需要 LFS_USERNAME 环境变量 ");
     let password = std::env::var("LFS_PASSWORD").expect("需要 LFS_PASSWORD 环境变量 ");
 
-    let setting = cos::CosSetting::new();
+    let setting = cos::CosClient::new();
 
     let listener = TcpListener::bind("127.0.0.1:8998").unwrap();
     // let pool = ThreadPool::new(4);
@@ -44,7 +43,7 @@ fn auth(basic: &str, account: (&str, &str)) -> bool {
     };
 }
 
-fn handle_stream(mut stream: std::net::TcpStream, setting: &CosSetting, account: (&str, &str)) {
+fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: (&str, &str)) {
     let mut reader = BufReader::new(&mut stream);
     let mut line = String::new();
     let _len = reader.read_line(&mut line).unwrap();
@@ -109,19 +108,14 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosSetting, account:
                             object["size"] = oid["size"].clone();
                             object["authenticated"] = true.into();
 
-                            let mut actions = json::JsonValue::new_array();
                             let mut action = json::JsonValue::new_object();
                             let mut upload = json::JsonValue::new_object();
-                            upload["href"] = json::JsonValue::String(cos::generate_presigned_url(
-                                setting,
-                                &oid["oid"].to_string(),
-                                3600,
-                            ));
+                            upload["href"] = json::JsonValue::String(
+                                setting.generate_presigned_url(&oid["oid"].to_string(), 3600),
+                            );
 
                             action["upload"] = upload;
-
-                            actions.push(action).unwrap();
-                            object["actions"] = actions;
+                            object["actions"] = action;
                             objects.push(object).unwrap();
                         }
                     } else if json["operation"] == "download" {
@@ -131,15 +125,13 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosSetting, account:
                             object["size"] = oid["size"].clone();
                             object["authenticated"] = true.into();
 
-                            let mut actions = json::JsonValue::new_array();
                             let mut action = json::JsonValue::new_object();
                             let mut download = json::JsonValue::new_object();
                             download["href"] = json::JsonValue::String(
-                                cos::generate_presigned_url(setting, &oid["oid"].to_string(), 3600),
+                                setting.get_object_url(&oid["oid"].to_string()),
                             );
                             action["download"] = download;
-                            actions.push(action).unwrap();
-                            object["actions"] = actions;
+                            object["actions"] = action;
                             objects.push(object).unwrap();
                         }
                     }
@@ -162,6 +154,7 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosSetting, account:
 
     let r = format!("HTTP/1.1 200 OK\r\nContent-Length: {length}\r\nContent-Type: application/vnd.git-lfs+json\r\n\r\n{response}");
 
+    println!("结果={}", r);
     stream.write_all(r.as_bytes()).unwrap();
     // stream.write_all(response.as_bytes()).unwrap();
     // stream.write_all("HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\ninkbox".as_bytes()).unwrap();

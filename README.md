@@ -1,6 +1,6 @@
 ## rust-lfs-server
 
-基于rust写的[git-lfs-server](https://github.com/git-lfs/git-lfs/)，存储使用**腾讯云cos**
+基于rust写的[git-lfs-server](https://github.com/git-lfs/git-lfs/)，存储使用**腾讯云cos**，要求存储库为公有读，私有写
 
 ---
 
@@ -10,7 +10,7 @@
 ### 开发环境
 
 
-我是基于**docker**镜像+ **vscode** 开发的
+我是基于[**docker**](https://gist.github.com/inkroom/501548078a930c6f3bd98ea257409648)镜像+ **vscode** 开发的
 
 
 ### 使用方法
@@ -37,6 +37,7 @@ echo "http://账号:密码@host%3aport" > ~/.git-credentials ## 这是为了避�
 ```shell
 GIT_LFS_SKIP_SMUDGE=1 git clone 仓库地址 # 跳过LFS拉取
 git config lfs.url http://host:port/
+git lfs install
 git lfs pull # 重新拉取文件
 ```
 

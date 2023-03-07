@@ -6,7 +6,8 @@ pub fn decode(value: &str) -> Result<String, FromUtf8Error> {
         'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
         'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1',
         '2', '3', '4', '5', '6', '7', '8', '9', '+', '/',
-    ].to_vec();
+    ]
+    .to_vec();
 
     // 字符串 转 字节数组
     let bytes = value.trim_matches(|c| c == '=').chars();

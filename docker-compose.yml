@@ -6,7 +6,9 @@ services:
                 ports:
                   - 8998:8998
                 environment:
-                - COS_ENDPOINT=https://image-12992.cos.ap-chengdu.myqcloud.com
+                - COS_ENDPOINT=cos.ap-chengdu.myqcloud.com
+                - COS_BUCKET=image-12992
                 - COS_APP_SECERT=
+                - COS_APP_ID=
                 - LFS_USERNAME=
                 - LFS_PASSWORD=

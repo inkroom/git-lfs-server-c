@@ -1,7 +1,6 @@
 use crypto::digest::Digest;
 use crypto::hmac::Hmac;
 use crypto::mac::Mac;
-use std::collections::HashMap;
 use std::time::SystemTime;
 
 use crypto::sha1::Sha1;
@@ -10,23 +9,30 @@ static HEX_TABLE: [char; 16] = [
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
 ];
 
-pub struct CosSetting{
+pub struct CosClient {
     end_point: String,
     app_secert: String,
+    app_id: String,
 }
 
-impl CosSetting {
+impl CosClient {
     ///
     /// 从环境变量中构建
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// 没有COS_ENDPOINT或者没有COS_APP_SECERT 环境变量
-    /// 
-    pub fn new()-> CosSetting{
+    ///
+    pub fn new() -> CosClient {
         let endpoint = std::env::var("COS_ENDPOINT").expect("需要 COS_ENDPOINT 环境变量");
+        let bucket = std::env::var("COS_BUCKET").expect("需要 COS_ENDPOINT 环境变量");
         let app_secert = std::env::var("COS_APP_SECERT").expect("需要 COS_APP_SECERT 环境变量");
-        CosSetting {end_point:endpoint,app_secert}
+        let app_id = std::env::var("COS_APP_ID").expect("需要 COS_APP_ID 环境变量");
+        CosClient {
+            end_point: format!("https://{bucket}.{endpoint}"),
+            app_secert,
+            app_id,
+        }
     }
 }
 
@@ -46,43 +52,40 @@ fn sign(key: &str, key_time: &str) -> String {
     mac.input(key_time.as_bytes());
 
     let res = mac.result();
-
     return to_hex(res.code());
 }
 
-pub fn generate_presigned_url(setting:&CosSetting,
-    key: &str,
-    expiration: u64,
-) -> String {
-    let mut sign_headers = HashMap::new();
+impl CosClient {
+    pub fn generate_presigned_url(&self, key: &str, expiration: u64) -> String {
+        let host = &self.end_point;
 
-    let host = &setting.end_point;
+        if let Ok(time) = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+            let key_time = format!("{};{}", time.as_secs(), time.as_secs() + expiration);
+            let sign_key = sign(&self.app_secert, &key_time);
 
-    sign_headers.insert("host", &host); // 可能还有其他请求头参与签名，暂时不管那些
+            let from_str = format!("put\n/{key}\n\n\n");
 
-    if let Ok(time) = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+            let mut sha1 = Sha1::new();
+            sha1.input_str(&from_str);
+            let hash_from_str = sha1.result_str(); // 进行 sha1 Hex hash
 
-        let key_time = format!("{};{}", time.as_secs(), time.as_secs() + expiration);
-        let sign_key = sign(&setting.app_secert, &key_time);
+            let str_to_sign = format!("sha1\n{key_time}\n{hash_from_str}\n");
 
-        let from_str = format!("put\n{key}\n\nhost={}\n", &host);
+            let sign = sign(&sign_key, &str_to_sign);
 
-        let mut sha1 = Sha1::new();
-        sha1.input_str(&from_str);
-        let hash_from_str = sha1.result_str(); // 进行 sha1 Hex hash
+            let authoriation_str = format!("q-sign-algorithm=sha1&q-ak={}&q-sign-time={key_time}&q-key-time={key_time}&q-header-list=&q-url-param-list=&q-signature={sign}",self.app_id);
 
-        let str_to_sign = format!("sha1\n{key_time}\n{hash_from_str}\n");
+            let mut res = String::new();
+            res.push_str(&format!("{host}/{key}?{authoriation_str}"));
 
-        let sign = sign(&sign_key, &str_to_sign);
-
-        let authoriation_str = format!("q-sign-algorithm=sha1&q-ak=AKIDJTQAh27xa0C907B2e3KODpERQBhz2pUx&q-sign-time={key_time}&q-key-time={key_time}&q-header-list=host&q-url-param-list=&q-signature={sign}");
-
-        let mut res = String::from("https://");
-        res.push_str(&format!("{host}/{key}?{authoriation_str}"));
-
-        return res;
+            return res;
+        }
+        panic!("app error");
     }
-    panic!("app error");
+
+    pub fn get_object_url(&self, key: &str) -> String {
+        return format!("{}/{}", &self.end_point, key);
+    }
 }
 
 #[cfg(test)]
@@ -91,7 +94,7 @@ mod tests {
 
     #[test]
     fn generate_presigned_url_test() {
-        let setting = CosSetting::new();
-        generate_presigned_url(&setting,"123",3600);
+        let setting = CosClient::new();
+        setting.generate_presigned_url("123", 3600);
     }
 }
