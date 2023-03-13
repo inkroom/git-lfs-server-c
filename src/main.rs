@@ -3,6 +3,9 @@ use std::{
     net::TcpListener,
 };
 
+use env_logger::Env;
+use log::{debug,warn,info};
+
 use cos::CosClient;
 use json;
 pub mod base64;
@@ -10,6 +13,8 @@ pub mod thread;
 use thread::ThreadPool;
 pub mod cos;
 fn main() {
+
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();//配置日志
     // 获取账号密码
 
     let username = std::env::var("LFS_USERNAME").expect("需要 LFS_USERNAME 环境变量 ");
@@ -17,13 +22,17 @@ fn main() {
 
     let setting = cos::CosClient::new();
 
+
     let listener = TcpListener::bind("127.0.0.1:8998").unwrap();
+
+    info!("server started");
+
     // let pool = ThreadPool::new(4);
     for stream in listener.incoming() {
         // pool.execute(|| {
         handle_stream(stream.unwrap(), &setting, (&username, &password));
         // });
-        println!("connect established");
+        debug!("connect established");
     }
 }
 fn write_401(mut stream: std::net::TcpStream) {
@@ -55,7 +64,7 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
     let mut line = String::new();
     let _len = reader.read_line(&mut line).unwrap();
 
-    println!("http {}", line);
+    debug!("http {}", line);
     let mut bucket;
 
     // 解析URL
@@ -65,6 +74,11 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
 
     iter.next().unwrap(); //跳过method
     bucket = String::from(iter.next().unwrap());
+    if bucket.is_empty() || bucket.len() <= 1 {
+        warn!(" uri 错误，无法获取到bucket ");
+        write_404(stream);
+        return;
+    }
     bucket.remove(0); // 移除开头的斜杠
 
     line.clear();
@@ -103,7 +117,7 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
         match chunk.read_to_end(&mut body) {
             Ok(_) => {
                 let body_str = std::str::from_utf8(&mut body).unwrap();
-                println!("body=[{}]", body_str);
+                debug!("body=[{}]", body_str);
 
                 if let Ok(json) = json::parse(&body_str) {
                     let mut objects = json::JsonValue::new_array();
@@ -181,7 +195,7 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
 
     let r = format!("HTTP/1.1 200 OK\r\nContent-Length: {length}\r\nContent-Type: application/vnd.git-lfs+json\r\n\r\n{response}");
 
-    println!("结果={}", r);
+    debug!("结果={}", r);
     stream.write_all(r.as_bytes()).unwrap();
     // stream.write_all(response.as_bytes()).unwrap();
     // stream.write_all("HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\ninkbox".as_bytes()).unwrap();

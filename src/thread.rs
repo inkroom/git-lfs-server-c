@@ -72,11 +72,11 @@ impl Worker {
             let job = receiver.lock().unwrap().recv();
             match job {
                 Ok(r) => {
-                    println!("woker {id} get task ");
+                    log::debug!("woker {id} get task ");
                     r();
                 }
                 Err(_) => {
-                    println!("Worker {id} disconnected; shutting down.");
+                    log::debug!("Worker {id} disconnected; shutting down.");
                     break;
                 }
             }

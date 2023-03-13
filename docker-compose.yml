@@ -13,3 +13,4 @@ services:
                 - COS_APP_ID=
                 - LFS_USERNAME=
                 - LFS_PASSWORD=
+                - RUST_LOG=info

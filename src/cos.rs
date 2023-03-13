@@ -4,6 +4,7 @@ use crypto::mac::Mac;
 use std::time::SystemTime;
 
 use crypto::sha1::Sha1;
+use log::debug;
 
 static HEX_TABLE: [char; 16] = [
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
@@ -67,7 +68,7 @@ impl CosClient {
         let mut res = String::new();
         let authoriation_str = self.sign("put", key, expiration);
         res.push_str(&format!("{host}/{key}?{authoriation_str}"));
-        println!("res = [{res}]");
+        debug!("res = [{res}]");
         return res;
     }
 
@@ -105,11 +106,11 @@ impl CosClient {
         );
 
         let r = self.sign("head", "", 3600);
-        println!("sign=[{r}]");
+        debug!("sign=[{r}]");
         let client = reqwest::blocking::Client::new();
         match client.head(url).header("Authorization", &r).send() {
             Ok(res) => {
-                println!("status=[{}]", res.status());
+                debug!("status=[{}]", res.status());
 
                 res.status().as_u16() == 200
             }
@@ -127,7 +128,7 @@ impl CosClient {
         );
 
         let r = self.sign("put", "", 3600);
-        println!("sign=[{r}]");
+        debug!("sign=[{r}]");
         let client = reqwest::blocking::Client::new();
         match client
             .put(url)
@@ -136,7 +137,7 @@ impl CosClient {
             .send()
         {
             Ok(res) => {
-                println!("status=[{}]", res.status());
+                debug!("status=[{}]", res.status());
 
                 res.status().as_u16() == 200
             }
@@ -154,16 +155,16 @@ impl CosClient {
         );
 
         let r = self.sign("delete", "", 3600);
-        println!("sign=[{r}]");
+        debug!("sign=[{r}]");
         let client = reqwest::blocking::Client::new();
         match client.put(url).header("Authorization", &r).send() {
             Ok(res) => {
-                println!("status=[{}]", res.status());
+                debug!("status=[{}]", res.status());
 
                 res.status().as_u16() == 200
             }
             Err(e) => {
-                println!("{}", e);
+                debug!("{}", e);
                 false
             }
         }
