@@ -61,11 +61,11 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
     // 解析URL
 
     let binding = line.clone();
-    let mut iter = binding.split_ascii_whitespace();// 这里不能直接使用line. 会有一个不可变借用
+    let mut iter = binding.split_ascii_whitespace(); // 这里不能直接使用line. 会有一个不可变借用
 
-    iter.next().unwrap();//跳过method
+    iter.next().unwrap(); //跳过method
     bucket = String::from(iter.next().unwrap());
-    bucket.remove(0);// 移除开头的斜杠
+    bucket.remove(0); // 移除开头的斜杠
 
     line.clear();
 
@@ -116,6 +116,11 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
                             // 401
                             write_401(stream);
                             return;
+                        }
+
+                        // 校验 bucket 是否存在
+                        if !setting.bucket_exists(&bucket) {
+                            setting.bucket_create(&bucket);
                         }
 
                         response_body["transfer"] = "basic".into();
