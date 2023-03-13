@@ -1,13 +1,14 @@
 services:
         lfs:
-                build: 
-                  context: .
+                image: ghcr.io/inkroom/lfs-server:rust-latest
+                # build:
+                #   context: .
                 container_name: lfs
                 ports:
                   - 8998:8998
                 environment:
-                - COS_ENDPOINT=cos.ap-chengdu.myqcloud.com
-                - COS_BUCKET=image-12992
+                - COS_REGION=chengdu
+                - COS_BUCKET_ID=12992
                 - COS_APP_SECERT=
                 - COS_APP_ID=
                 - LFS_USERNAME=

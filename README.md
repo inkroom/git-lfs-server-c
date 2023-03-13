@@ -15,11 +15,23 @@
 
 ### 使用方法
 
+
+#### 存储桶
+
+lfs-server将从url中获取存储桶，如 `http://localhost:8898/examples`  此处 **examples** 就是存储桶，注意其命名规范，cos文档说明如下:
+
+> - 仅支持小写英文字母和数字，即[a-z，0-9]、中划线“-”及其组合。
+> - 存储桶名称的最大允许字符受到 地域简称 和 APPID 的字符数影响，组成的完整请求域名字符数总计最多60个字符。例如请求域名 123456789012345678901-1250000000.cos.ap-beijing.myqcloud.com 总和为60个字符。
+> - 存储桶命名不能以“-”开头或结尾。
+
+
+
+
 #### 初始化
 
 ```shell
 git init 
-git config lfs.url http://host:port/
+git config lfs.url http://host:port/{bucket}
 git lfs install 
 git lfs track "*.png" 
 git lfs track "*.jpg" 
@@ -36,7 +48,7 @@ echo "http://账号:密码@host%3aport" > ~/.git-credentials ## 这是为了避�
 
 ```shell
 GIT_LFS_SKIP_SMUDGE=1 git clone 仓库地址 # 跳过LFS拉取
-git config lfs.url http://host:port/
+git config lfs.url http://host:port/{bucket}
 git lfs install
 git lfs pull # 重新拉取文件
 ```

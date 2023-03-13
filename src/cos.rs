@@ -10,9 +10,10 @@ static HEX_TABLE: [char; 16] = [
 ];
 
 pub struct CosClient {
-    end_point: String,
+    region: String,
     app_secert: String,
     app_id: String,
+    bucket_id: String,
 }
 
 impl CosClient {
@@ -21,17 +22,19 @@ impl CosClient {
     ///
     /// # Errors
     ///
-    /// 没有COS_ENDPOINT或者没有COS_APP_SECERT 环境变量
+    /// 没有COS_REGION或者没有COS_APP_SECERT 环境变量
     ///
     pub fn new() -> CosClient {
-        let endpoint = std::env::var("COS_ENDPOINT").expect("需要 COS_ENDPOINT 环境变量");
-        let bucket = std::env::var("COS_BUCKET").expect("需要 COS_ENDPOINT 环境变量");
+        let region = std::env::var("COS_REGION").expect("需要 COS_REGION 环境变量");
         let app_secert = std::env::var("COS_APP_SECERT").expect("需要 COS_APP_SECERT 环境变量");
         let app_id = std::env::var("COS_APP_ID").expect("需要 COS_APP_ID 环境变量");
+        let bucket_id = std::env::var("COS_BUCKET_ID").expect("需要 COS_BUCKET_ID 环境变量");
+
         CosClient {
-            end_point: format!("https://{bucket}.{endpoint}"),
+            region,
             app_secert,
             app_id,
+            bucket_id,
         }
     }
 }
@@ -56,45 +59,139 @@ fn sign(key: &str, key_time: &str) -> String {
 }
 
 impl CosClient {
-    pub fn generate_presigned_url(&self, key: &str, expiration: u64) -> String {
-        let host = &self.end_point;
+    pub fn generate_presigned_url(&self, bucket: &str, key: &str, expiration: u64) -> String {
+        let host = format!(
+            "https://{}-{}.cos.ap-{}.myqcloud.com",
+            bucket, self.bucket_id, self.region
+        );
+        let mut res = String::new();
+        let authoriation_str = self.sign("put", key, expiration);
+        res.push_str(&format!("{host}/{key}?{authoriation_str}"));
+        println!("res = [{res}]");
+        return res;
+    }
 
+    fn sign(&self, method: &str, uri: &str, expiration: u64) -> String {
         if let Ok(time) = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
             let key_time = format!("{};{}", time.as_secs(), time.as_secs() + expiration);
+            // let key_time = "1678672161;1678675761";
             let sign_key = sign(&self.app_secert, &key_time);
-
-            let from_str = format!("put\n/{key}\n\n\n");
-
+            let from_str = format!("{method}\n/{uri}\n\n\n");
             let mut sha1 = Sha1::new();
             sha1.input_str(&from_str);
             let hash_from_str = sha1.result_str(); // 进行 sha1 Hex hash
 
             let str_to_sign = format!("sha1\n{key_time}\n{hash_from_str}\n");
-
             let sign = sign(&sign_key, &str_to_sign);
 
             let authoriation_str = format!("q-sign-algorithm=sha1&q-ak={}&q-sign-time={key_time}&q-key-time={key_time}&q-header-list=&q-url-param-list=&q-signature={sign}",self.app_id);
 
-            let mut res = String::new();
-            res.push_str(&format!("{host}/{key}?{authoriation_str}"));
-
-            return res;
+            return authoriation_str;
         }
         panic!("app error");
     }
 
-    pub fn get_object_url(&self, key: &str) -> String {
-        return format!("{}/{}", &self.end_point, key);
+    pub fn get_object_url(&self, bucket: &str, key: &str) -> String {
+        return format!(
+            "https://{}-{}.cos.ap-{}.myqcloud.com/{}",
+            bucket, self.bucket_id, &self.region, key
+        );
+    }
+
+    pub fn bucket_exists(&self, bucket: &str) -> bool {
+        let url = format!(
+            "https://{bucket}-{}.cos.ap-{}.myqcloud.com",
+            self.bucket_id, self.region
+        );
+
+        let r = self.sign("head", "", 3600);
+        println!("sign=[{r}]");
+        let client = reqwest::blocking::Client::new();
+        match client.head(url).header("Authorization", &r).send() {
+            Ok(res) => {
+                println!("status=[{}]", res.status());
+
+                res.status().as_u16() == 200
+            }
+            Err(e) => {
+                println!("{}", e);
+                false
+            }
+        }
+    }
+
+    pub fn bucket_create(&self, bucket: &str) -> bool {
+        let url = format!(
+            "https://{bucket}-{}.cos.ap-{}.myqcloud.com",
+            self.bucket_id, self.region
+        );
+
+        let r = self.sign("put", "", 3600);
+        println!("sign=[{r}]");
+        let client = reqwest::blocking::Client::new();
+        match client
+            .put(url)
+            .header("x-cos-acl", "public-read")
+            .header("Authorization", &r)
+            .send()
+        {
+            Ok(res) => {
+                println!("status=[{}]", res.status());
+
+                res.status().as_u16() == 200
+            }
+            Err(e) => {
+                println!("{}", e);
+                false
+            }
+        }
+    }
+
+    pub fn bucket_delete(&self, bucket: &str) -> bool {
+        let url = format!(
+            "https://{bucket}-{}.cos.ap-{}.myqcloud.com",
+            self.bucket_id, self.region
+        );
+
+        let r = self.sign("delete", "", 3600);
+        println!("sign=[{r}]");
+        let client = reqwest::blocking::Client::new();
+        match client.put(url).header("Authorization", &r).send() {
+            Ok(res) => {
+                println!("status=[{}]", res.status());
+
+                res.status().as_u16() == 200
+            }
+            Err(e) => {
+                println!("{}", e);
+                false
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[ignore = "由于腾讯云一致性问题，只能手动确认"]
+    fn bucket_create() {
+        let setting = CosClient::new();
+        setting.bucket_delete("rust");
+        assert!(setting.bucket_create("rust"));
+        assert!(setting.bucket_exists("rust"));
+    }
+
+    #[test]
+    fn bucket_exists() {
+        let setting = CosClient::new();
+        assert!(setting.bucket_exists("image"));
+        assert!(!setting.bucket_exists("image2"));
+    }
 
     #[test]
     fn generate_presigned_url_test() {
         let setting = CosClient::new();
-        setting.generate_presigned_url("123", 3600);
+        println!("{}", setting.generate_presigned_url("image", "123", 3600));
     }
 }

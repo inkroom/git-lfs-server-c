@@ -33,6 +33,13 @@ fn write_401(mut stream: std::net::TcpStream) {
     stream.write_all(r.as_bytes()).unwrap();
 }
 
+fn write_404(mut stream: std::net::TcpStream) {
+    let response = "Not Found";
+    let length = response.len();
+    let r = format!("HTTP/1.1 404 Not Found\r\nContent-Length: {length}\r\nContent-Type: application/vnd.git-lfs+json\r\n\r\n{response}");
+    stream.write_all(r.as_bytes()).unwrap();
+}
+
 fn auth(basic: &str, account: (&str, &str)) -> bool {
     return match base64::decode(basic) {
         Ok(s) => {
@@ -47,6 +54,18 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
     let mut reader = BufReader::new(&mut stream);
     let mut line = String::new();
     let _len = reader.read_line(&mut line).unwrap();
+
+    println!("http {}", line);
+    let mut bucket;
+
+    // 解析URL
+
+    let binding = line.clone();
+    let mut iter = binding.split_ascii_whitespace();// 这里不能直接使用line. 会有一个不可变借用
+
+    iter.next().unwrap();//跳过method
+    bucket = String::from(iter.next().unwrap());
+    bucket.remove(0);// 移除开头的斜杠
 
     line.clear();
 
@@ -110,9 +129,12 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
 
                             let mut action = json::JsonValue::new_object();
                             let mut upload = json::JsonValue::new_object();
-                            upload["href"] = json::JsonValue::String(
-                                setting.generate_presigned_url(&oid["oid"].to_string(), 3600),
-                            );
+                            upload["href"] =
+                                json::JsonValue::String(setting.generate_presigned_url(
+                                    &bucket,
+                                    &oid["oid"].to_string(),
+                                    3600,
+                                ));
 
                             action["upload"] = upload;
                             object["actions"] = action;
@@ -128,7 +150,7 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
                             let mut action = json::JsonValue::new_object();
                             let mut download = json::JsonValue::new_object();
                             download["href"] = json::JsonValue::String(
-                                setting.get_object_url(&oid["oid"].to_string()),
+                                setting.get_object_url(&bucket, &oid["oid"].to_string()),
                             );
                             action["download"] = download;
                             object["actions"] = action;

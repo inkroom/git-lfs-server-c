@@ -35,6 +35,9 @@ jobs:
          tags: |
             type=sha,prefix=rust-sha-
             type=raw,value=rust-latest,enable=true
+         labels: |
+            org.opencontainers.image.description=rust版本的git-lfs-server
+            org.opencontainers.image.title=git-lfs-server-rust
      - name: Build and push Docker image
        uses: docker/build-push-action@v4
        with:
