@@ -5,6 +5,6 @@ VOLUME /root/.cargo/registry
 RUN cargo build --release -vv --target=x86_64-unknown-linux-musl
 
 
-FROM alpine
+FROM scratch
 COPY --from=0 /workdir/target/x86_64-unknown-linux-musl/release/server /server
 CMD ["/server"]
