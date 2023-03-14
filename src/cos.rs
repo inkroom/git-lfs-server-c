@@ -4,7 +4,6 @@ use crypto::mac::Mac;
 use std::time::SystemTime;
 
 use crypto::sha1::Sha1;
-use log::debug;
 
 static HEX_TABLE: [char; 16] = [
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
@@ -68,7 +67,10 @@ impl CosClient {
         let mut res = String::new();
         let authoriation_str = self.sign("put", key, expiration);
         res.push_str(&format!("{host}/{key}?{authoriation_str}"));
-        debug!("res = [{res}]");
+        #[cfg(feature="plog")]
+        log::debug!("res = [{res}]");
+        #[cfg(not(feature="plog"))]
+        println!("res = [{res}]");
         return res;
     }
 
@@ -106,11 +108,20 @@ impl CosClient {
         );
 
         let r = self.sign("head", "", 3600);
-        debug!("sign=[{r}]");
+        
+        #[cfg(feature="plog")]
+        log::debug!("sign=[{r}]");
+        #[cfg(not(feature="plog"))]
+        println!("sign=[{r}]");
+
         let client = reqwest::blocking::Client::new();
         match client.head(url).header("Authorization", &r).send() {
             Ok(res) => {
-                debug!("status=[{}]", res.status());
+                
+                #[cfg(feature="plog")]
+                log::debug!("status=[{}]", res.status());
+                #[cfg(not(feature="plog"))]
+                println!("status=[{}]", res.status());
 
                 res.status().as_u16() == 200
             }
@@ -128,7 +139,11 @@ impl CosClient {
         );
 
         let r = self.sign("put", "", 3600);
-        debug!("sign=[{r}]");
+        #[cfg(feature="plog")]
+        log::debug!("sign=[{r}]");
+        #[cfg(not(feature="plog"))]
+        println!("sign=[{r}]");
+
         let client = reqwest::blocking::Client::new();
         match client
             .put(url)
@@ -137,7 +152,10 @@ impl CosClient {
             .send()
         {
             Ok(res) => {
-                debug!("status=[{}]", res.status());
+                #[cfg(feature="plog")]
+                log::debug!("status=[{}]", res.status());
+                #[cfg(not(feature="plog"))]
+                println!("status=[{}]", res.status());
 
                 res.status().as_u16() == 200
             }
@@ -155,16 +173,26 @@ impl CosClient {
         );
 
         let r = self.sign("delete", "", 3600);
-        debug!("sign=[{r}]");
+        #[cfg(feature="plog")]
+        log::debug!("sign=[{r}]");
+        #[cfg(not(feature="plog"))]
+        println!("sign=[{r}]");
+        
         let client = reqwest::blocking::Client::new();
         match client.put(url).header("Authorization", &r).send() {
             Ok(res) => {
-                debug!("status=[{}]", res.status());
+                #[cfg(feature="plog")]
+                log::debug!("status=[{}]", res.status());
+                #[cfg(not(feature="plog"))]
+                println!("status=[{}]", res.status());
 
                 res.status().as_u16() == 200
             }
             Err(e) => {
-                debug!("{}", e);
+                #[cfg(feature="plog")]
+                log::debug!("{}", e);
+                #[cfg(not(feature="plog"))]
+                println!("{}", e);
                 false
             }
         }

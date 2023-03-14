@@ -10,5 +10,9 @@ json = "0.12.4"
 rust-crypto = "0.2.36"
 reqwest = { version = "0.11", features = ["blocking"] }
 openssl = "0.10.45"
-log = "0.4.17"
-env_logger = "0.10.0"
+log = { version = "0.4.17" , optional = true}
+env_logger = { version = "0.10.0" , optional = true}
+
+
+[features]
+plog=["log","env_logger"]

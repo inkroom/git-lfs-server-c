@@ -52,6 +52,9 @@ impl Drop for ThreadPool {
     fn drop(&mut self) {
         drop(self.sender.take());
         for worker in &mut self.workers {
+            #[cfg(feature="plog")]
+            log::debug!("Shutting down worker {}", worker.id);
+            #[cfg(not(feature="plog"))]
             println!("Shutting down worker {}", worker.id);
 
             if let Some(thread) = worker.thread.take() {
@@ -72,11 +75,17 @@ impl Worker {
             let job = receiver.lock().unwrap().recv();
             match job {
                 Ok(r) => {
+                    #[cfg(feature="plog")]
                     log::debug!("woker {id} get task ");
+                    #[cfg(not(feature="plog"))]
+                    println!("woker {id} get task ");
                     r();
                 }
                 Err(_) => {
+                    #[cfg(feature="plog")]
                     log::debug!("Worker {id} disconnected; shutting down.");
+                    #[cfg(not(feature="plog"))]
+                    println!("Worker {id} disconnected; shutting down.");
                     break;
                 }
             }
