@@ -7,13 +7,11 @@ on:
    paths-ignore:
     - 'README.md'
   workflow_dispatch:
-permissions:
-  contents: write
 jobs:
  build:
    runs-on: ubuntu-latest
    permissions:
-     contents: read
+     contents: write
      packages: write
 
    steps:
@@ -99,6 +97,7 @@ jobs:
       uses: ncipollo/release-action@v1
       with:
           artifacts: "bin/server-all,bin/server-mini"
+          token: ${{ secrets.GITHUB_TOKEN }}
     - name: Push Docker image
       uses: docker/build-push-action@v4
       with:
