@@ -6,6 +6,8 @@ use std::{
     sync::{mpsc, Arc, Mutex},
     thread,
 };
+
+use crate::s_debug;
 pub struct ThreadPool {
     workers: Vec<Worker>,
     sender: Option<std::sync::mpsc::Sender<Job>>, // threads: Vec<std::thread::JoinHandle<()>>,
@@ -52,10 +54,7 @@ impl Drop for ThreadPool {
     fn drop(&mut self) {
         drop(self.sender.take());
         for worker in &mut self.workers {
-            #[cfg(feature="plog")]
-            log::debug!("Shutting down worker {}", worker.id);
-            #[cfg(not(feature="plog"))]
-            println!("Shutting down worker {}", worker.id);
+            s_debug!("Shutting down worker {}", worker.id);
 
             if let Some(thread) = worker.thread.take() {
                 thread.join().unwrap();
@@ -75,17 +74,11 @@ impl Worker {
             let job = receiver.lock().unwrap().recv();
             match job {
                 Ok(r) => {
-                    #[cfg(feature="plog")]
-                    log::debug!("woker {id} get task ");
-                    #[cfg(not(feature="plog"))]
-                    println!("woker {id} get task ");
+                    s_debug!("woker {id} get task ");
                     r();
                 }
                 Err(_) => {
-                    #[cfg(feature="plog")]
-                    log::debug!("Worker {id} disconnected; shutting down.");
-                    #[cfg(not(feature="plog"))]
-                    println!("Worker {id} disconnected; shutting down.");
+                    s_debug!("Worker {id} disconnected; shutting down.");
                     break;
                 }
             }

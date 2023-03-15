@@ -5,16 +5,15 @@ use std::{
 
 #[cfg(feature = "plog")]
 use env_logger::Env;
-#[cfg(feature = "plog")]
-use log::{debug, info, warn};
 
 use cos::CosClient;
 use json;
 pub mod base64;
+pub mod console;
 pub mod cos;
-pub mod thread;
+// pub mod thread;
 
-fn features(){
+fn features() {
     let mut features = String::from("enabled features = ");
 
     #[cfg(feature = "plog")]
@@ -22,17 +21,11 @@ fn features(){
     #[cfg(feature = "bucket")]
     features.push_str("bucket ");
 
-    #[cfg(feature = "plog")]
-    info!("{}", features);
-    #[cfg(not(feature = "plog"))]
-    println!("{}", features);
+    s_info!("{}", features);
 }
 
-fn started(){
-    #[cfg(feature = "plog")]
-    info!("server started!");
-    #[cfg(not(feature = "plog"))]
-    println!("server started!");
+fn started() {
+    s_info!("server started!");
 }
 
 fn main() {
@@ -49,7 +42,7 @@ fn main() {
     let setting = cos::CosClient::new();
 
     let listener = TcpListener::bind("127.0.0.1:8998").unwrap();
-    
+
     started();
 
     // #[cfg(feature = "thread")]
@@ -62,10 +55,7 @@ fn main() {
         // #[cfg(not(feature = "thread"))]
         handle_stream(stream.unwrap(), &setting, (&username, &password));
 
-        #[cfg(feature = "plog")]
-        debug!("connect established");
-        #[cfg(not(feature = "plog"))]
-        println!("connect established");
+        s_debug!("connect established");
     }
 }
 fn write_401(mut stream: std::net::TcpStream) {
@@ -96,10 +86,7 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
     let mut reader = BufReader::new(&mut stream);
     let mut line = String::new();
     let _len = reader.read_line(&mut line).unwrap();
-    #[cfg(feature = "plog")]
-    debug!("http {}", line);
-    #[cfg(not(feature = "plog"))]
-    println!("http {}", line);
+    s_debug!("http {}", line);
 
     let mut bucket;
 
@@ -111,10 +98,7 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
     iter.next().unwrap(); //跳过method
     bucket = String::from(iter.next().unwrap());
     if bucket.is_empty() || bucket.len() <= 1 {
-        #[cfg(feature = "plog")]
-        warn!(" uri 错误，无法获取到bucket ");
-        #[cfg(not(feature = "plog"))]
-        println!(" uri 错误，无法获取到bucket ");
+        s_warn!(" uri 错误，无法获取到bucket ");
 
         write_404(stream);
         return;
@@ -157,10 +141,7 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
         match chunk.read_to_end(&mut body) {
             Ok(_) => {
                 let body_str = std::str::from_utf8(&mut body).unwrap();
-                #[cfg(feature = "plog")]
-                debug!("body=[{}]", body_str);
-                #[cfg(not(feature = "plog"))]
-                println!("body=[{}]", body_str);
+                s_debug!("body=[{}]", body_str);
 
                 if let Ok(json) = json::parse(&body_str) {
                     let mut objects = json::JsonValue::new_array();
@@ -174,7 +155,7 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
                             write_401(stream);
                             return;
                         }
-                        #[cfg(features = "bucket")]
+                        #[cfg(feature = "bucket")]
                         // 校验 bucket 是否存在
                         if !setting.bucket_exists(&bucket) {
                             setting.bucket_create(&bucket);
@@ -237,10 +218,7 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
     let length = response.len();
 
     let r = format!("HTTP/1.1 200 OK\r\nContent-Length: {length}\r\nContent-Type: application/vnd.git-lfs+json\r\n\r\n{response}");
-    #[cfg(feature = "plog")]
-    debug!("结果={}", r);
-    #[cfg(not(feature = "plog"))]
-    println!("结果={}", r);
+    s_debug!("结果={}", r);
 
     stream.write_all(r.as_bytes()).unwrap();
     // stream.write_all(response.as_bytes()).unwrap();

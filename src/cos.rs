@@ -5,6 +5,8 @@ use std::time::SystemTime;
 
 use crypto::sha1::Sha1;
 
+use crate::s_debug;
+
 static HEX_TABLE: [char; 16] = [
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
 ];
@@ -67,10 +69,7 @@ impl CosClient {
         let mut res = String::new();
         let authoriation_str = self.sign("put", key, expiration);
         res.push_str(&format!("{host}/{key}?{authoriation_str}"));
-        #[cfg(feature="plog")]
-        log::debug!("res = [{res}]");
-        #[cfg(not(feature="plog"))]
-        println!("res = [{res}]");
+        s_debug!("res = [{res}]");
         return res;
     }
 
@@ -100,49 +99,43 @@ impl CosClient {
             bucket, self.bucket_id, &self.region, key
         );
     }
-    #[cfg(features="bucket")]
+    #[cfg(feature = "bucket")]
     pub fn bucket_exists(&self, bucket: &str) -> bool {
+        use crate::s_error;
+
         let url = format!(
             "https://{bucket}-{}.cos.ap-{}.myqcloud.com",
             self.bucket_id, self.region
         );
 
         let r = self.sign("head", "", 3600);
-        
-        #[cfg(feature="plog")]
-        log::debug!("sign=[{r}]");
-        #[cfg(not(feature="plog"))]
-        println!("sign=[{r}]");
+
+        s_debug!("sign=[{r}]");
 
         let client = reqwest::blocking::Client::new();
         match client.head(url).header("Authorization", &r).send() {
             Ok(res) => {
-                
-                #[cfg(feature="plog")]
-                log::debug!("status=[{}]", res.status());
-                #[cfg(not(feature="plog"))]
-                println!("status=[{}]", res.status());
+                s_debug!("status=[{}]", res.status());
 
                 res.status().as_u16() == 200
             }
             Err(e) => {
-                println!("{}", e);
+                s_error!("{}", e);
                 false
             }
         }
     }
-    #[cfg(features="bucket")]
+    #[cfg(feature = "bucket")]
     pub fn bucket_create(&self, bucket: &str) -> bool {
+        use crate::s_error;
+
         let url = format!(
             "https://{bucket}-{}.cos.ap-{}.myqcloud.com",
             self.bucket_id, self.region
         );
 
         let r = self.sign("put", "", 3600);
-        #[cfg(feature="plog")]
-        log::debug!("sign=[{r}]");
-        #[cfg(not(feature="plog"))]
-        println!("sign=[{r}]");
+        s_debug!("sign=[{r}]");
 
         let client = reqwest::blocking::Client::new();
         match client
@@ -152,20 +145,17 @@ impl CosClient {
             .send()
         {
             Ok(res) => {
-                #[cfg(feature="plog")]
-                log::debug!("status=[{}]", res.status());
-                #[cfg(not(feature="plog"))]
-                println!("status=[{}]", res.status());
+                s_debug!("status=[{}]", res.status());
 
                 res.status().as_u16() == 200
             }
             Err(e) => {
-                println!("{}", e);
+                s_error!("{}", e);
                 false
             }
         }
     }
-    #[cfg(features="bucket")]
+    #[cfg(feature = "bucket")]
     pub fn bucket_delete(&self, bucket: &str) -> bool {
         let url = format!(
             "https://{bucket}-{}.cos.ap-{}.myqcloud.com",
@@ -173,26 +163,17 @@ impl CosClient {
         );
 
         let r = self.sign("delete", "", 3600);
-        #[cfg(feature="plog")]
-        log::debug!("sign=[{r}]");
-        #[cfg(not(feature="plog"))]
-        println!("sign=[{r}]");
-        
+        s_debug!("sign=[{r}]");
+
         let client = reqwest::blocking::Client::new();
         match client.put(url).header("Authorization", &r).send() {
             Ok(res) => {
-                #[cfg(feature="plog")]
-                log::debug!("status=[{}]", res.status());
-                #[cfg(not(feature="plog"))]
-                println!("status=[{}]", res.status());
+                s_debug!("status=[{}]", res.status());
 
                 res.status().as_u16() == 200
             }
             Err(e) => {
-                #[cfg(feature="plog")]
-                log::debug!("{}", e);
-                #[cfg(not(feature="plog"))]
-                println!("{}", e);
+                s_debug!("{}", e);
                 false
             }
         }
@@ -203,17 +184,19 @@ impl CosClient {
 mod tests {
     use super::*;
     #[test]
-    #[ignore = "由于腾讯云一致性问题，只能手动确认"]
-    #[cfg(features="bucket")]
+    #[cfg(feature = "bucket")]
     fn bucket_create() {
         let setting = CosClient::new();
         setting.bucket_delete("rust");
+        std::thread::sleep(std::time::Duration::from_secs(10));
         assert!(setting.bucket_create("rust"));
+        std::thread::sleep(std::time::Duration::from_secs(10));
         assert!(setting.bucket_exists("rust"));
+        std::thread::sleep(std::time::Duration::from_secs(10));
     }
 
     #[test]
-    #[cfg(features="bucket")]
+    #[cfg(feature = "bucket")]
     fn bucket_exists() {
         let setting = CosClient::new();
         assert!(setting.bucket_exists("image"));

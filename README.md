@@ -10,7 +10,7 @@
 ### 开发环境
 
 
-我是基于[**docker**](https://gist.github.com/inkroom/501548078a930c6f3bd98ea257409648)镜像+ **vscode** 开发的
+我是基于[**docker**](https://gist.github.com/inkroom/501548078a930c6f3bd98ea257409648#file-dockerfile-rust)镜像+ **vscode** 开发的
 
 
 ### features
