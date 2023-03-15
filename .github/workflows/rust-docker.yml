@@ -7,7 +7,8 @@ on:
    paths-ignore:
     - 'README.md'
   workflow_dispatch:
-  
+permissions:
+  contents: write
 jobs:
  build:
    runs-on: ubuntu-latest
@@ -97,7 +98,7 @@ jobs:
     - name: Release
       uses: ncipollo/release-action@v1
       with:
-          artifacts: "bin/*"
+          artifacts: "bin/server-all,bin/server-mini"
     - name: Push Docker image
       uses: docker/build-push-action@v4
       with:

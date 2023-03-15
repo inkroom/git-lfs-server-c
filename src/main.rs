@@ -13,8 +13,14 @@ pub mod console;
 pub mod cos;
 // pub mod thread;
 
+pub mod shadow{
+    include!(concat!(env!("OUT_DIR"), "/shadow.rs"));
+}
+
 fn features() {
-    let mut features = String::from("enabled features = ");
+    // println!("{}",shadow::PKG_VERSION);//0.3.13
+
+    let mut features = String::from("version= ".to_owned() + shadow::PKG_VERSION  +"; enabled features = ");
 
     #[cfg(feature = "plog")]
     features.push_str("plog ");

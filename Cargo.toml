@@ -1,8 +1,8 @@
 [package]
 name = "server"
-version = "0.1.0"
+version = "0.0.4"
 edition = "2021"
-
+build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -13,6 +13,8 @@ openssl = {version="0.10.45",optional = true}
 log = { version = "0.4.17" , optional = true}
 env_logger = { version = "0.10.0" , optional = true}
 
+[build-dependencies]
+shadow-rs = "0.3"
 
 [features]
 default=["plog"]
