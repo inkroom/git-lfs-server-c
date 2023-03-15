@@ -11,21 +11,25 @@ use json;
 pub mod base64;
 pub mod console;
 pub mod cos;
-// pub mod thread;
+#[cfg(feature = "thread")]
+pub mod thread;
 
-pub mod shadow{
+pub mod shadow {
     include!(concat!(env!("OUT_DIR"), "/shadow.rs"));
 }
 
 fn features() {
     // println!("{}",shadow::PKG_VERSION);//0.3.13
 
-    let mut features = String::from("version= ".to_owned() + shadow::PKG_VERSION  +"; enabled features = ");
+    let mut features =
+        String::from("version= ".to_owned() + shadow::PKG_VERSION + "; enabled features = ");
 
     #[cfg(feature = "plog")]
     features.push_str("plog ");
     #[cfg(feature = "bucket")]
     features.push_str("bucket ");
+    #[cfg(feature = "thread")]
+    features.push_str("thread ");
 
     s_info!("{}", features);
 }
@@ -51,14 +55,20 @@ fn main() {
 
     started();
 
-    // #[cfg(feature = "thread")]
-    // let pool = thread::ThreadPool::new(4);
+    #[cfg(feature = "thread")]
+    let pool = thread::ThreadPool::new(4);
     for stream in listener.incoming() {
-        // #[cfg(feature = "thread")]
-        // pool.execute(move || {
-        //     handle_stream(stream.unwrap(), &setting, (&username, &password));
-        // });
-        // #[cfg(not(feature = "thread"))]
+        #[cfg(feature = "thread")]
+        {
+            let s = setting.clone();
+            let u = username.clone();
+            let p = password.clone();
+            pool.execute(move || {
+                handle_stream(stream.unwrap(), &s, (&u, &p));
+            });
+        }
+
+        #[cfg(not(feature = "thread"))]
         handle_stream(stream.unwrap(), &setting, (&username, &password));
 
         s_debug!("connect established");
