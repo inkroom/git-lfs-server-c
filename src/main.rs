@@ -13,9 +13,33 @@ use json;
 pub mod base64;
 pub mod cos;
 pub mod thread;
+
+fn features(){
+    let mut features = String::from("enabled features = ");
+
+    #[cfg(feature = "plog")]
+    features.push_str("plog ");
+    #[cfg(feature = "bucket")]
+    features.push_str("bucket ");
+
+    #[cfg(feature = "plog")]
+    info!("{}", features);
+    #[cfg(not(feature = "plog"))]
+    println!("{}", features);
+}
+
+fn started(){
+    #[cfg(feature = "plog")]
+    info!("server started!");
+    #[cfg(not(feature = "plog"))]
+    println!("server started!");
+}
+
 fn main() {
     #[cfg(feature = "plog")]
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init(); //配置日志
+
+    features();
 
     // 获取账号密码
 
@@ -25,11 +49,9 @@ fn main() {
     let setting = cos::CosClient::new();
 
     let listener = TcpListener::bind("127.0.0.1:8998").unwrap();
+    
+    started();
 
-    #[cfg(feature = "plog")]
-    info!("server started");
-    #[cfg(not(feature = "plog"))]
-    println!("server started");
     // #[cfg(feature = "thread")]
     // let pool = thread::ThreadPool::new(4);
     for stream in listener.incoming() {
@@ -152,7 +174,7 @@ fn handle_stream(mut stream: std::net::TcpStream, setting: &CosClient, account: 
                             write_401(stream);
                             return;
                         }
-                        #[cfg(features="bucket")]
+                        #[cfg(features = "bucket")]
                         // 校验 bucket 是否存在
                         if !setting.bucket_exists(&bucket) {
                             setting.bucket_create(&bucket);
