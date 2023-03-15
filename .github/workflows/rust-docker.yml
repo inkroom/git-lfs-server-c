@@ -30,6 +30,21 @@ jobs:
       - uses: lukka/get-cmake@latest
       - name: setup vcpkg
         uses: lukka/run-vcpkg@v10
+        with:
+          vcpkgGitCommitId: 'a7b6122f6b6504d16d96117336a0562693579933'
+      - name: openssl
+        run: |
+          vcpkg install openssl:x64-windows-static
+
+          set OPENSSL_DIR = 'C:\vcpkg\installed\x64-windows-static'
+
+          set OPENSSL_INCLUDE_DIR="C:\vcpkg\installed\x64-windows-static\include"
+
+          set OPENSSL_LIB_DIR="C:\vcpkg\installed\x64-windows-static\lib"
+
+          set OPENSSL_STATIC = 'Yes'
+
+          set OPENSSL_NO_VENDOR=1
       - name: Build Dyn
         run: | 
           mkdir bin
