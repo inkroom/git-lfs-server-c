@@ -16,55 +16,63 @@ jobs:
      packages: write
 
    steps:
-     - name: Checkout repository
-       uses: actions/checkout@v3
-       with: 
-         ref: 'rust'
-     - name: Log in to the Container registry
-       uses: docker/login-action@v2
-       with:
-         registry: ghcr.io
-         username: ${{ github.repository_owner }}
-         password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with: 
+        ref: 'rust'
+    - name: Get Git Message
+      id: msg
+      uses: kceb/git-message-action@v2
+    - name: Log in to the Container registry
+      uses: docker/login-action@v2
+      if: contains(steps.msg.outputs.title,'skip ci') == false
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-     - name: Extract metadata (tags, labels) for Docker
-       id: meta
-       uses: docker/metadata-action@v4
-       with:
-         images: ghcr.io/${{ github.repository_owner }}/lfs-server
-         tags: |
-            type=raw,value=latest,enable=true
-            type=sha,prefix=rust-sha-
-            type=raw,value=rust-latest,enable=true
-         labels: |
-            org.opencontainers.image.description=rust版本的git-lfs-server
-            org.opencontainers.image.title=git-lfs-server-rust
-     - name: Extract metadata (tags, labels) for Docker All Features
-       id: all
-       uses: docker/metadata-action@v4
-       with:
-         images: ghcr.io/${{ github.repository_owner }}/lfs-server
-         tags: |
-            type=sha,prefix=rust-all-sha-
-            type=raw,value=rust-all-latest,enable=true
-         labels: |
-            org.opencontainers.image.description=rust版本的git-lfs-server,启用所有功能
-            org.opencontainers.image.title=git-lfs-server-rust-all
-     - name: Build and push Docker image
-       uses: docker/build-push-action@v4
-       with:
-         context: .
-         push: true
-         tags: ${{ steps.meta.outputs.tags }}
-         labels: ${{ steps.meta.outputs.labels }}
-         github-token: ${{ secrets.GITHUB_TOKEN }}
-     - name: Build and push All Features Docker image
-       uses: docker/build-push-action@v4
-       with:
-         context: .
-         push: true
-         tags: ${{ steps.all.outputs.tags }}
-         labels: ${{ steps.all.outputs.labels }}
-         github-token: ${{ secrets.GITHUB_TOKEN }}
-         build-args: |
-            CARGO_FEATURES=--all-features
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v4
+      if: contains(steps.msg.outputs.title,'skip ci') == false
+      with:
+        images: ghcr.io/${{ github.repository_owner }}/lfs-server
+        tags: |
+          type=raw,value=latest,enable=true
+          type=sha,prefix=rust-sha-
+          type=raw,value=rust-latest,enable=true
+        labels: |
+          org.opencontainers.image.description=rust版本的git-lfs-server
+          org.opencontainers.image.title=git-lfs-server-rust
+    - name: Extract metadata (tags, labels) for Docker All Features
+      id: all
+      uses: docker/metadata-action@v4
+      if: contains(steps.msg.outputs.title,'skip ci') == false
+      with:
+        images: ghcr.io/${{ github.repository_owner }}/lfs-server
+        tags: |
+          type=sha,prefix=rust-all-sha-
+          type=raw,value=rust-all-latest,enable=true
+        labels: |
+          org.opencontainers.image.description=rust版本的git-lfs-server,启用所有功能
+          org.opencontainers.image.title=git-lfs-server-rust-all
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      if: contains(steps.msg.outputs.title,'skip ci') == false
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build and push All Features Docker image
+      uses: docker/build-push-action@v4
+      if: contains(steps.msg.outputs.title,'skip ci') == false
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.all.outputs.tags }}
+        labels: ${{ steps.all.outputs.labels }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        build-args: |
+          CARGO_FEATURES=--all-features
