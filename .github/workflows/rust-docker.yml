@@ -30,6 +30,11 @@ jobs:
       - uses: lukka/get-cmake@latest
       - name: setup vcpkg
         uses: lukka/run-vcpkg@v10
+        with:
+          vcpkgGitCommitId: 'a7b6122f6b6504d16d96117336a0562693579933'
+      - name: openssl
+        run: |
+          vcpkg install openssl:x86-windows
       - name: Build Dyn
         run: | 
           mkdir bin
