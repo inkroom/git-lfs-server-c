@@ -33,11 +33,23 @@ jobs:
        with:
          images: ghcr.io/${{ github.repository_owner }}/lfs-server
          tags: |
+            type=raw,value=latest,enable=true
             type=sha,prefix=rust-sha-
             type=raw,value=rust-latest,enable=true
          labels: |
             org.opencontainers.image.description=rust版本的git-lfs-server
             org.opencontainers.image.title=git-lfs-server-rust
+     - name: Extract metadata (tags, labels) for Docker All Features
+       id: all
+       uses: docker/metadata-action@v4
+       with:
+         images: ghcr.io/${{ github.repository_owner }}/lfs-server
+         tags: |
+            type=sha,prefix=rust-all-sha-
+            type=raw,value=rust-all-latest,enable=true
+         labels: |
+            org.opencontainers.image.description=rust版本的git-lfs-server,启用所有功能
+            org.opencontainers.image.title=git-lfs-server-rust-all
      - name: Build and push Docker image
        uses: docker/build-push-action@v4
        with:
@@ -46,3 +58,13 @@ jobs:
          tags: ${{ steps.meta.outputs.tags }}
          labels: ${{ steps.meta.outputs.labels }}
          github-token: ${{ secrets.GITHUB_TOKEN }}
+     - name: Build and push All Features Docker image
+       uses: docker/build-push-action@v4
+       with:
+         context: .
+         push: true
+         tags: ${{ steps.all.outputs.tags }}
+         labels: ${{ steps.all.outputs.labels }}
+         github-token: ${{ secrets.GITHUB_TOKEN }}
+         build-args: |
+            CARGO_FEATURES=--all-features

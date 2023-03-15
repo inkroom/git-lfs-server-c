@@ -100,7 +100,7 @@ impl CosClient {
             bucket, self.bucket_id, &self.region, key
         );
     }
-
+    #[cfg(features="bucket")]
     pub fn bucket_exists(&self, bucket: &str) -> bool {
         let url = format!(
             "https://{bucket}-{}.cos.ap-{}.myqcloud.com",
@@ -131,7 +131,7 @@ impl CosClient {
             }
         }
     }
-
+    #[cfg(features="bucket")]
     pub fn bucket_create(&self, bucket: &str) -> bool {
         let url = format!(
             "https://{bucket}-{}.cos.ap-{}.myqcloud.com",
@@ -165,7 +165,7 @@ impl CosClient {
             }
         }
     }
-
+    #[cfg(features="bucket")]
     pub fn bucket_delete(&self, bucket: &str) -> bool {
         let url = format!(
             "https://{bucket}-{}.cos.ap-{}.myqcloud.com",
@@ -204,6 +204,7 @@ mod tests {
     use super::*;
     #[test]
     #[ignore = "由于腾讯云一致性问题，只能手动确认"]
+    #[cfg(features="bucket")]
     fn bucket_create() {
         let setting = CosClient::new();
         setting.bucket_delete("rust");
@@ -212,6 +213,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(features="bucket")]
     fn bucket_exists() {
         let setting = CosClient::new();
         assert!(setting.bucket_exists("image"));

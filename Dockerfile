@@ -2,7 +2,8 @@ FROM registry.gitlab.com/rust_musl_docker/image:stable-latest
 ADD . /workdir
 VOLUME /root/.cargo/git
 VOLUME /root/.cargo/registry
-RUN cargo build --release -vv --target=x86_64-unknown-linux-musl
+ARG CARGO_FEATURES
+RUN cargo build --release -vv --target=x86_64-unknown-linux-musl ${CARGO_FEATURES}
 
 
 FROM scratch
