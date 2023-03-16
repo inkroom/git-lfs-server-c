@@ -48,11 +48,10 @@ jobs:
         with:
           path: |
             ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
+            ~/.cargo/registry/
+            ~/.cargo/git/
             target/
-          key: ${{ runner.os }}-cargo-
+          key: ${{ runner.os }}-cargo
       - name: Build Dyn
         env:
           OPENSSL_DIR: C:\vcpkg\packages\openssl_x64-windows-static
@@ -62,22 +61,11 @@ jobs:
           OPENSSL_NO_VENDOR: 1
         run: | 
           mkdir bin
-          cargo build --release --all-features
-          cp target/release/server.exe bin/server-dyn-all.exe
-          cargo clean
           cargo build --release
           cp target/release/server.exe bin/server-dyn-mini.exe
-      - name: Save Cargo
-        if: steps.cache-cargo.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-
+          cargo clean
+          cargo build --release --all-features
+          cp target/release/server.exe bin/server-dyn-all.exe
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -107,11 +95,10 @@ jobs:
         with:
           path: |
             ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
+            ~/.cargo/registry/
+            ~/.cargo/git/
             target/
-          key: ${{ runner.os }}-cargo-
+          key: ${{ runner.os }}-cargo
       - name: Build Dyn
         run: | 
           mkdir bin
@@ -120,17 +107,6 @@ jobs:
           cargo clean
           cargo build --release
           cp target/release/server bin/server-dyn-mini
-      - name: Save Cargo
-        if: steps.cache-cargo.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -189,21 +165,30 @@ jobs:
           labels: |
             org.opencontainers.image.description=rust版本的git-lfs-server,启用所有功能
             org.opencontainers.image.title=git-lfs-server-rust-all
-      - name: Build And Push Docker image
+      - name: Fix Version
+        run: |
+          ver=$(sed -n "3,3p" Cargo.toml)
+          cp Cargo.toml Cargo-docker.toml
+          sed -i '3c     version="0.0.1"' Cargo.toml
+      - name: Build Docker image
         uses: docker/build-push-action@v4
+        id: mini_image_id
         with:
           context: .
-          push: true
+          load: true
+          push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Build And Push All Features Docker image
+      - name: Build All Features Docker image
         uses: docker/build-push-action@v4
+        id: all_image_id
         with:
           context: .
-          push: true
+          load: true
+          push: false
           tags: ${{ steps.all.outputs.tags }}
           labels: ${{ steps.all.outputs.labels }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -214,28 +199,45 @@ jobs:
       - name: Extract Docker Image
         id: ex
         run: |
+          docker images
+          all_image_id="${{ steps.all_image_id.outputs.imageid }}"
+          all_image_id=${all_image_id:7}
+          mini_image_id="${{ steps.mini_image_id.outputs.imageid }}"
+          mini_image_id=${mini_image_id:7}
           mkdir all 
           mkdir mini
+          mkdir bin
           cd all
-          docker save -o all.tar ghcr.io/inkroom/lfs-server:rust-all-latest
+          docker save -o all.tar $all_image_id
           tar xvf all.tar
-          echo "layer:$(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "3,3p")"
+          echo "layer:$(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "2,2p")"
           cat manifest.json
-          tar xvf $(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "3,3p")
+          tar xvf $(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "2,2p")
           cp server ../bin/server-all
           cd ../mini
-          docker save -o mini.tar ghcr.io/inkroom/lfs-server:latest
+          docker save -o mini.tar $mini_image_id
           tar xvf mini.tar
           cat manifest.json
-          echo "layer:$(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "3,3p")"
-          tar xvf $(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "3,3p")
+          echo "layer:$(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "2,2p")"
+          tar xvf $(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "2,2p")
           cp server ../bin/server-mini
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
           name: bin
           path: bin/*
-
+      - name: Push Docker Image
+        run: |
+          echo "${{ steps.meta.outputs.tags }}" > mini.txt
+          for a in `cat mini.txt`;
+          do
+            docker push $a
+          done
+          echo "${{ steps.all.outputs.tags }}" > all.txt
+          for a in `cat all.txt`;
+          do
+            docker push $a
+          done
   release:
     runs-on: ubuntu-20.04
     needs: ["windows","linux","docker"]
@@ -252,9 +254,11 @@ jobs:
           name: bin
           path: bin/
       - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           ls -all -h bin
           TAGNAME=$(sed -n "3,3p" Cargo.toml)
-          TAGNAME=${v:11}
-          TAGNAME=$(echo "v$v" | sed 's/"//g')
-          hub release create $(for a in bin/*; do echo -a $a; done) -m "$TAGNAME" -t "rust" "$TAGNAME"
+          TAGNAME=${TAGNAME:11}
+          TAGNAME=$(echo "v$TAGNAME" | sed 's/"//g')
+          gh release create --target rust $TAGNAME ./bin/*
