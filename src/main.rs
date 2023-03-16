@@ -14,15 +14,24 @@ pub mod cos;
 #[cfg(feature = "thread")]
 pub mod thread;
 
-pub mod shadow {
-    include!(concat!(env!("OUT_DIR"), "/shadow.rs"));
-}
+use shadow_rs::shadow;
+
+shadow!(build);
 
 fn features() {
     // println!("{}",shadow::PKG_VERSION);//0.3.13
 
-    let mut features =
-        String::from("version= ".to_owned() + shadow::PKG_VERSION + "; enabled features = ");
+    let mut features = String::from(
+        "version= ".to_owned()
+            + build::PKG_VERSION
+            + " ; time = "
+            + build::BUILD_TIME
+            + " ; commit = "
+            + build::SHORT_COMMIT
+            + " ; rust = "
+            + build::RUST_VERSION
+            + " ; enabled features = ",
+    );
 
     #[cfg(feature = "plog")]
     features.push_str("plog ");
