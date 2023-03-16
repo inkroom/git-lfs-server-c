@@ -197,8 +197,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache-from: type=registry,ref=user/app:buildcache
-          cache-to: type=registry,ref=user/app:buildcache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: Build And Push All Features Docker image
         uses: docker/build-push-action@v4
         with:
@@ -207,8 +207,8 @@ jobs:
           tags: ${{ steps.all.outputs.tags }}
           labels: ${{ steps.all.outputs.labels }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache-from: type=registry,ref=user/app:buildcache
-          cache-to: type=registry,ref=user/app:buildcache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           build-args: |
             CARGO_FEATURES=--all-features
       - name: Extract Docker Image
