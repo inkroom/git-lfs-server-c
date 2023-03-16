@@ -2,6 +2,7 @@ name: rust
 
 on:
   push:
+    branches: ['rust']
     tags: 
       - 'v*'
     paths-ignore:
@@ -84,19 +85,16 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-
-      - name: Release
-        uses: ncipollo/release-action@v1
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
         with:
-            artifacts: "bin/*"
-            token: ${{ secrets.GITHUB_TOKEN }}
-            draft: true
-            allowUpdates: true
+          name: bin
+          path: bin/*
   linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     permissions:
       contents: write
       packages: write
-    needs: [windows]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -140,6 +138,28 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: bin
+          path: bin/*
+  docker: 
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with: 
+          ref: 'rust'
+      - name: Version
+        id: v
+        run: |
+          v=$(sed -n "3,3p" Cargo.toml)
+          v=${v:11}
+          v=$(echo $v | sed 's/"//g')
+          echo "ve=$v" && echo $v | sed 's/"//g') >> $GITHUB_OUTPUT
       - name: Log in to the Container registry
         uses: docker/login-action@v2
         with:
@@ -213,13 +233,11 @@ jobs:
           echo "layer:$(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "3,3p")"
           tar xvf $(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "3,3p")
           cp server ../bin/server-mini
-      - name: Release
-        uses: ncipollo/release-action@v1
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
         with:
-            artifacts: "bin/*"
-            token: ${{ secrets.GITHUB_TOKEN }}
-            draft: false
-            allowUpdates: true
+          name: bin
+          path: bin/*
       - name: Push Docker image
         uses: docker/build-push-action@v4
         with:
@@ -238,3 +256,27 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           build-args: |
             CARGO_FEATURES=--all-features
+
+  release:
+    runs-on: ubuntu-20.04
+    needs: ["windows","linux","docker"]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with: 
+          ref: 'rust'
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: bin
+          path: bin/
+      - name: Release
+        run: |
+          ls -all -h bin
+          TAGNAME=$(sed -n "3,3p" Cargo.toml)
+          TAGNAME=${v:11}
+          TAGNAME=$(echo $v | sed 's/"//g')
+          TAGNAME="v$TAGNAME"
+          hub release create $(for a in bin/*; do echo -a $a; done) -m "$TAGNAME" -t "rust" "$TAGNAME"
