@@ -67,30 +67,32 @@ impl CosClient {
             bucket, self.bucket_id, self.region
         );
         let mut res = String::new();
-        let authoriation_str = self.sign("put", key, expiration);
+        let authoriation_str = self.sign("put", key, expiration).unwrap();
         res.push_str(&format!("{host}/{key}?{authoriation_str}"));
         s_debug!("res = [{res}]");
         return res;
     }
 
-    fn sign(&self, method: &str, uri: &str, expiration: u64) -> String {
+    fn sign(&self, method: &str, uri: &str, expiration: u64) -> Result<String,String> {
         if let Ok(time) = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
             let key_time = format!("{};{}", time.as_secs(), time.as_secs() + expiration);
             // let key_time = "1678672161;1678675761";
             let sign_key = sign(&self.app_secert, &key_time);
             let from_str = format!("{method}\n/{uri}\n\n\n");
             let mut sha1 = Sha1::new();
+            s_debug!("from_str={}", from_str);
             sha1.input_str(&from_str);
             let hash_from_str = sha1.result_str(); // 进行 sha1 Hex hash
 
             let str_to_sign = format!("sha1\n{key_time}\n{hash_from_str}\n");
+            s_debug!("str_to_sign=[{str_to_sign}]");
             let sign = sign(&sign_key, &str_to_sign);
 
             let authoriation_str = format!("q-sign-algorithm=sha1&q-ak={}&q-sign-time={key_time}&q-key-time={key_time}&q-header-list=&q-url-param-list=&q-signature={sign}",self.app_id);
 
-            return authoriation_str;
+            return Ok(authoriation_str);
         }
-        panic!("app error");
+        Err(String::from("app error"))
     }
 
     pub fn get_object_url(&self, bucket: &str, key: &str) -> String {
@@ -108,16 +110,17 @@ impl CosClient {
             self.bucket_id, self.region
         );
 
-        let r = self.sign("head", "", 3600);
+        let r = self.sign("head", "", 3600).unwrap();
 
         s_debug!("sign=[{r}]");
 
         let client = reqwest::blocking::Client::new();
         match client.head(url).header("Authorization", &r).send() {
             Ok(res) => {
-                s_debug!("status=[{}]", res.status());
-
-                res.status().as_u16() == 200
+                let r = res.status();
+                s_debug!("status=[{}]", r);
+                s_debug!("content=[{}]", res.text().unwrap());
+                r.as_u16() == 200
             }
             Err(e) => {
                 s_error!("{}", e);
@@ -134,7 +137,7 @@ impl CosClient {
             self.bucket_id, self.region
         );
 
-        let r = self.sign("put", "", 3600);
+        let r = self.sign("put", "", 3600).unwrap();
         s_debug!("sign=[{r}]");
 
         let client = reqwest::blocking::Client::new();
@@ -145,9 +148,10 @@ impl CosClient {
             .send()
         {
             Ok(res) => {
-                s_debug!("status=[{}]", res.status());
-
-                res.status().as_u16() == 200
+                let r = res.status();
+                s_debug!("status=[{}]", r);
+                s_debug!("content=[{}]", res.text().unwrap());
+                r.as_u16() == 200
             }
             Err(e) => {
                 s_error!("{}", e);
@@ -157,23 +161,26 @@ impl CosClient {
     }
     #[cfg(feature = "bucket")]
     pub fn bucket_delete(&self, bucket: &str) -> bool {
+        use crate::s_error;
+
         let url = format!(
             "https://{bucket}-{}.cos.ap-{}.myqcloud.com",
             self.bucket_id, self.region
         );
 
-        let r = self.sign("delete", "", 3600);
+        let r = self.sign("delete", "", 3600).unwrap();
         s_debug!("sign=[{r}]");
 
         let client = reqwest::blocking::Client::new();
-        match client.put(url).header("Authorization", &r).send() {
+        match client.delete(url).header("Authorization", &r).send() {
             Ok(res) => {
-                s_debug!("status=[{}]", res.status());
-
-                res.status().as_u16() == 200
+                let r = res.status();
+                s_debug!("status=[{}]", r);
+                s_debug!("content=[{}]", res.text().unwrap());
+                r.as_u16() == 200
             }
             Err(e) => {
-                s_debug!("{}", e);
+                s_error!("{}", e);
                 false
             }
         }
@@ -189,19 +196,14 @@ mod tests {
         let setting = CosClient::new();
         setting.bucket_delete("rust");
         std::thread::sleep(std::time::Duration::from_secs(10));
+        assert!(!setting.bucket_exists("rust"));
+        std::thread::sleep(std::time::Duration::from_secs(10));
         assert!(setting.bucket_create("rust"));
         std::thread::sleep(std::time::Duration::from_secs(10));
         assert!(setting.bucket_exists("rust"));
         std::thread::sleep(std::time::Duration::from_secs(10));
     }
 
-    #[test]
-    #[cfg(feature = "bucket")]
-    fn bucket_exists() {
-        let setting = CosClient::new();
-        assert!(setting.bucket_exists("image"));
-        assert!(!setting.bucket_exists("image2"));
-    }
 
     #[test]
     fn generate_presigned_url_test() {
