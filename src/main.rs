@@ -49,7 +49,19 @@ fn started() {
 
 fn main() {
     #[cfg(feature = "plog")]
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init(); //配置日志
+    env_logger::Builder::from_env(Env::default().default_filter_or("info"))
+        .format(|buf, record| {
+            let dt = chrono::Utc::now();
+            let fixed_dt = dt.with_timezone(&chrono::FixedOffset::east_opt(8 * 3600).unwrap());
+            writeln!(
+                buf,
+                "{} {}: {}",
+                fixed_dt.format("%Y-%m-%d %H:%M:%S%.3f"),
+                record.level(),
+                record.args()
+            )
+        })
+        .init(); //配置日志
 
     features();
 
