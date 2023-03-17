@@ -1,0 +1,264 @@
+name: release
+
+on:
+  push:
+    branches: ['rust']
+    tags: 
+      - 'v*'
+    paths-ignore:
+      - 'README.md'
+  workflow_dispatch:
+jobs:
+  windows:
+    runs-on: windows-2022
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with: 
+          ref: 'rust'
+      - name: Version
+        id: v
+        run: |
+          echo "ve=${GITHUB_REF_NAME:1}" >> $GITHUB_OUTPUT
+      - name: Rust
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: 1.68.0
+            override: true
+      - uses: lukka/get-cmake@latest
+      - name: setup vcpkg
+        uses: lukka/run-vcpkg@v10
+        with:
+          vcpkgGitCommitId: 'a7b6122f6b6504d16d96117336a0562693579933'
+      - name: Cache Openssl
+        id: cache-openssl
+        uses: actions/cache@v3
+        with:
+          path: C:\vcpkg
+          key: ${{ runner.os }}-openssl-static
+      - name: Install Openssl
+        if: steps.cache-openssl.outputs.cache-hit != 'true'
+        run: |
+          vcpkg install openssl:x64-windows-static
+      - uses: actions/cache@v3
+        id: cache-cargo
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/
+            ~/.cargo/git/
+            target/
+          key: ${{ runner.os }}-cargo
+      - name: Build Dyn
+        env:
+          OPENSSL_DIR: C:\vcpkg\packages\openssl_x64-windows-static
+          OPENSSL_INCLUDE_DIR: C:\vcpkg\packages\openssl_x64-windows-static\include
+          OPENSSL_LIB_DIR: C:\vcpkg\packages\openssl_x64-windows-static\lib
+          OPENSSL_STATIC: Yes
+          OPENSSL_NO_VENDOR: 1
+        run: | 
+          mkdir bin
+          cargo build --release
+          cp target/release/server.exe bin/server-dyn-mini.exe
+          cargo clean
+          cargo build --release --all-features
+          cp target/release/server.exe bin/server-dyn-all.exe
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: bin
+          path: bin/*
+  linux:
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with: 
+          ref: 'rust'
+      - name: Version
+        id: v
+        run: |
+          echo "ve=${GITHUB_REF_NAME:1}" >> $GITHUB_OUTPUT
+      - name: Rust
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: 1.68.0
+            override: true
+      - uses: actions/cache@v3
+        id: cache-cargo
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/
+            ~/.cargo/git/
+            target/
+          key: ${{ runner.os }}-cargo
+      - name: Build Dyn
+        run: | 
+          mkdir bin
+          cargo build --release --all-features
+          cp target/release/server bin/server-dyn-all
+          cargo clean
+          cargo build --release
+          cp target/release/server bin/server-dyn-mini
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: bin
+          path: bin/*
+  docker: 
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with: 
+          ref: 'rust'
+      - name: Version
+        id: v
+        run: |
+          v=$(sed -n "3,3p" Cargo.toml)
+          v=${v:11}
+          v=$(echo $v | sed 's/"//g')
+          echo "ve=$v" >> $GITHUB_OUTPUT
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/lfs-server
+          tags: |
+            type=raw,value=latest,enable=true
+            type=sha,prefix=rust-sha-
+            type=raw,value=rust-latest,enable=true
+            type=raw,value=${{ steps.v.outputs.ve }}-mini
+          labels: |
+            org.opencontainers.image.description=rust版本的git-lfs-server
+            org.opencontainers.image.title=git-lfs-server-rust
+      - name: Extract metadata (tags, labels) for Docker All Features
+        id: all
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/lfs-server
+          tags: |
+            type=sha,prefix=rust-all-sha-
+            type=raw,value=rust-all-latest,enable=true
+            type=raw,value=${{ steps.v.outputs.ve }}-all
+          labels: |
+            org.opencontainers.image.description=rust版本的git-lfs-server,启用所有功能
+            org.opencontainers.image.title=git-lfs-server-rust-all
+      - name: Fix Version
+      #  固定版本号，主要是为了避免 仅版本号变化 导致docker缓存失效
+        run: |
+          cp Cargo.toml Cargo-docker.toml
+          sed -i '3c     version="0.0.1"' Cargo.toml
+      - name: Build Docker image
+        uses: docker/build-push-action@v4
+        id: mini_image_id
+        with:
+          context: .
+          load: true
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build All Features Docker image
+        uses: docker/build-push-action@v4
+        id: all_image_id
+        with:
+          context: .
+          load: true
+          push: false
+          tags: ${{ steps.all.outputs.tags }}
+          labels: ${{ steps.all.outputs.labels }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            CARGO_FEATURES=--all-features
+      - name: Extract Docker Image
+        id: ex
+        run: |
+          docker images
+          all_image_id="${{ steps.all_image_id.outputs.imageid }}"
+          all_image_id=${all_image_id:7}
+          mini_image_id="${{ steps.mini_image_id.outputs.imageid }}"
+          mini_image_id=${mini_image_id:7}
+          mkdir all 
+          mkdir mini
+          mkdir bin
+          cd all
+          docker save -o all.tar $all_image_id
+          tar xvf all.tar
+          echo "layer:$(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "2,2p")"
+          cat manifest.json
+          tar xvf $(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "2,2p")
+          cp server ../bin/server-all
+          cd ../mini
+          docker save -o mini.tar $mini_image_id
+          tar xvf mini.tar
+          cat manifest.json
+          echo "layer:$(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "2,2p")"
+          tar xvf $(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "2,2p")
+          cp server ../bin/server-mini
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: bin
+          path: bin/*
+      - name: Push Docker Image
+        run: |
+          echo "${{ steps.meta.outputs.tags }}" > mini.txt
+          for a in `cat mini.txt`;
+          do
+            docker push $a
+          done
+          echo "${{ steps.all.outputs.tags }}" > all.txt
+          for a in `cat all.txt`;
+          do
+            docker push $a
+          done
+  release:
+    runs-on: ubuntu-20.04
+    needs: ["windows","linux","docker"]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with: 
+          ref: 'rust'
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: bin
+          path: bin/
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -all -h bin
+          TAGNAME=$(sed -n "3,3p" Cargo.toml)
+          TAGNAME=${TAGNAME:11}
+          TAGNAME=$(echo "v$TAGNAME" | sed 's/"//g')
+          gh release create --target rust $TAGNAME ./bin/*
