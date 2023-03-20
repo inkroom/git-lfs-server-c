@@ -37,8 +37,8 @@ jobs:
         id: cache-openssl
         uses: actions/cache@v3
         with:
-          path: C:\vcpkg
-          key: ${{ runner.os }}-openssl-static
+          path: C:\vcpkg\packages\
+          key: ${{ runner.os }}-openssl-static-2
       - name: Install Openssl
         if: steps.cache-openssl.outputs.cache-hit != 'true'
         run: |
