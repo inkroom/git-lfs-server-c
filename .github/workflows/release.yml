@@ -59,13 +59,14 @@ jobs:
           OPENSSL_LIB_DIR: C:\vcpkg\packages\openssl_x64-windows-static\lib
           OPENSSL_STATIC: Yes
           OPENSSL_NO_VENDOR: 1
+          RUSTFLAGS: "-C target-feature=+crt-static"
         run: | 
           mkdir bin
           cargo build --release
-          cp target/release/server.exe bin/server-dyn-mini.exe
+          cp target/release/server.exe bin/server-mini.exe
           cargo clean
           cargo build --release --all-features
-          cp target/release/server.exe bin/server-dyn-all.exe
+          cp target/release/server.exe bin/server-all.exe
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
