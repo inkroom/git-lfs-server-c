@@ -43,6 +43,7 @@ jobs:
         if: steps.cache-openssl.outputs.cache-hit != 'true'
         run: |
           vcpkg install openssl:x64-windows-static
+          rm C:\vcpkg\packages\openssl_x64-windows-static\debug -r
       - uses: actions/cache@v3
         id: cache-cargo
         with:
