@@ -212,16 +212,16 @@ jobs:
           cd all
           docker save -o all.tar $all_image_id
           tar xvf all.tar
-          echo "layer:$(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "2,2p")"
+          echo "layer:$(sed 's/","/\n/g' manifest.json | sed 's/"]}/\n/g' | tac | sed -n "2,2p")"
           cat manifest.json
-          tar xvf $(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "2,2p")
+          tar xvf $(sed 's/","/\n/g' manifest.json | sed 's/"]}/\n/g' | tac | sed -n "2,2p")
           cp server ../bin/server-all
           cd ../mini
           docker save -o mini.tar $mini_image_id
           tar xvf mini.tar
           cat manifest.json
-          echo "layer:$(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "2,2p")"
-          tar xvf $(sed 's/"]}/\n/g' manifest.json | sed 's/\["/\n/g' | sed -n "2,2p")
+          echo "layer:$(sed 's/","/\n/g' manifest.json | sed 's/"]}/\n/g' | tac | sed -n "2,2p")"
+          tar xvf $(sed 's/","/\n/g' manifest.json | sed 's/"]}/\n/g' | tac | sed -n "2,2p")
           cp server ../bin/server-mini
       - name: Upload artifacts
         uses: actions/upload-artifact@v3

@@ -63,7 +63,11 @@ fn main() {
         })
         .init(); //配置日志
 
-    features();
+    let v: Vec<_> = std::env::args().collect();
+    if v.len() > 1 {
+        features();
+        std::process::exit(0);
+    }
 
     // 获取账号密码
 
